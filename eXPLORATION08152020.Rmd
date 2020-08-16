@@ -1,0 +1,368 @@
+---
+title: "Untitled"
+author: "Sean L. Patten"
+date: "7/26/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r COVID}
+
+
+library(DataExplorer)
+library(xlsx)
+library(tidyverse)
+library(lmtest)
+library(sandwich)
+library(plm)
+library(reshape2)
+library(Bolstad)
+library(bdynsys)
+
+county_data_ <- read.xlsx("final_data_assemble08012020.xlsx", sheetName = "Sheet1")
+
+
+setwd("C:/Users/snlpt/Desktop/MSDS 692/datas")
+panel_final <- read_csv("final_data_assemble_ts08102020.csv")
+
+panel_final <- panel_final %>% na.omit(FIPS)
+
+fill_out_fips <- function(x){
+  
+  #x<-as.character(urban_area_to_county$FIPS)
+  j <- 1
+  y <- vector(mode = "character", length = 0)
+  
+  
+  while (j <= length(x)){
+    fips_hold <- x[j]
+    while (nchar(fips_hold) < 5){
+      fips_hold <- paste0("0", x[j])
+      
+    }
+    y[j] <- fips_hold
+    j <- j+1
+    
+  }
+  
+  y <- as.character(y)
+  return(y)
+  
+}
+
+panel_final$FIPS <- panel_final$FIPS %>% fill_out_fips()
+```
+
+
+```{r COVID, echo=FALSE}
+
+introduce(county_data_)
+
+county_data_ <- county_data_ %>%replace_na(list(CAREALAND = 0, Pass_Miles = 0, U_P_Trips = 0, SRVC_AREA_SQML = 0, SRVC_AREA_POP = 0, V7.cases = 0, V6.cases = 0, V5.cases = 0, V4.cases = 0, V3.cases=0, V2.cases=0, V1.cases=0, V1.rides = 0, V2.rides = 0, V3.rides = 0, V4.rides = 0, Avg_PMiles_Trip = 0))
+
+introduce(county_data_)
+
+plot_intro(county_data_)
+
+plot_missing(county_data_)
+
+count(county_data_)
+
+
+introduce(panel_final)
+
+plot_intro(panel_final)
+
+plot_missing(panel_final)
+
+count(panel_final)
+
+
+```
+
+```{r COVID, echo = FALSE}
+
+county_data_<- mutate(county_data_, Pass_MperT = Pass_Miles/U_P_Trips)
+county_data_<- mutate(county_data_, Pop_Dense = POPESTIMATE2018/CAREALAND)
+county_data_ <- mutate(county_data_, SRVC_Pop_Dense = POPESTIMATE2018/SRVC_AREA_SQML)
+
+county_data_$Pass_MperT[is.nan(county_data_$Pass_MperT)] <- 0
+county_data_$V4.rides[is.nan(county_data_$V4.rides)] <- 0
+county_data_$V3.rides[is.nan(county_data_$V3.rides)] <- 0
+county_data_$V2.rides[is.nan(county_data_$V2.rides)] <- 0
+county_data_$V1.rides[is.nan(county_data_$V1.rides)] <- 0
+
+county_data_$SRVC_Pop_Dense[is.infinite(county_data_$SRVC_Pop_Dense)] <- 0
+county_data_$indexPMPOPEST <- county_data_$Pass_Miles/county_data_$POPESTIMATE2018/(mean(county_data_$Pass_Miles/county_data_$POPESTIMATE2018))
+
+county_data_<- county_data_ %>% mutate(Cases_per_Person_Jun = V6.cases/POPESTIMATE2018)
+county_data_ <- county_data_ %>% mutate(Cases_per_Person_May = V5.cases/POPESTIMATE2018)
+county_data_ <- county_data_ %>% mutate(Cases_per_Person_Apr = V4.cases/POPESTIMATE2018)
+county_data_ <- county_data_ %>% mutate(Cases_per_Person_Mar = V3.cases/POPESTIMATE2018)
+county_data_ <- county_data_ %>% mutate(Cases_per_Person_Feb = V2.cases/POPESTIMATE2018)
+county_data_ <- county_data_ %>% mutate(Cases_per_Person_Jan = V1.cases/POPESTIMATE2018)
+
+scatter_dat <- county_data_[,c("SRVC_AREA_SQML", "SRVC_AREA_POP", "SRVC_Pop_Dense", "Years.of.Potential.Life.Lost.Rate", "U_P_Trips", "Pass_Miles", "Pass_MperT", "Cases_per_Person_Jun", "Cases_per_Person_Mar", "Cases_per_Person_May", "Cases_per_Person_Apr", "indexPMPOPEST", "V4.cases","V1.rides", "V2.rides", "V3.rides", "V4.rides", "Avg_PMiles_Trip", "Pass_Miles", "U_P_Trips", "POPESTIMATE2018","Cases_per_Person_Feb", "Restaurants")]
+
+plot_scatterplot(scatter_dat, by = "V4.cases")
+
+plot_scatterplot(scatter_dat, by = "Cases_per_Person_Apr")
+
+plot_correlation(scatter_dat)
+
+covid_mod1 <- lm(Cases_per_Person_Mar ~ SRVC_Pop_Dense + POPESTIMATE2018 + Avg_PMiles_Trip + Cases_per_Person_Feb +  + Years.of.Potential.Life.Lost.Rate+Restaurants, data=scatter_dat)
+
+summary(covid_mod1)
+
+covid_mod2 <- lm(Cases_per_Person_Apr ~ SRVC_Pop_Dense + POPESTIMATE2018 + Avg_PMiles_Trip + Cases_per_Person_Mar +  + Years.of.Potential.Life.Lost.Rate+Restaurants, data=county_data_)
+
+summary(covid_mod2)
+
+county_data_ <- county_data_ %>% mutate(RperPerson = Restaurants/POPESTIMATE2018) 
+
+plot_correlation(county_data_[,c("Pass_Miles", "U_P_Trips", "Avg_PMiles_Trip", "POPESTIMATE2018", "RperPerson", "Cases_per_Person_Mar")])
+
+testme <- filter(county_data_, V3.cases < 5000)
+testme <- filter(testme, SRVC_AREA_SQML < 100000)
+
+testme <- testme%>%mutate(diff_MA = V3.rides-V4.rides)
+
+testme <- testme%>%mutate(diff_JF = V1.rides-V2.rides)
+
+testme <- testme%>%mutate(diff_FM = V2.rides-V3.rides)
+
+covid_mod3 <- lm(Cases_per_Person_Jun ~ SRVC_Pop_Dense + POPESTIMATE2018 + Avg_PMiles_Trip + Cases_per_Person_May + Years.of.Potential.Life.Lost.Rate+Restaurants + diff_MA+diff_JF+diff_FM, data=testme)
+
+summary(covid_mod3)
+
+coeftest(covid_mod3, vcov = vcovHC(covid_mod3, type="HC1"))
+
+plot_correlation(testme[,c("SRVC_Pop_Dense", "POPESTIMATE2018", "Avg_PMiles_Trip", "V1.cases", "V2.cases", "V4.cases", "V3.cases", "V5.cases", "V6.cases", "Years.of.Potential.Life.Lost.Rate", "Restaurants", "diff_MA", "diff_JF", "diff_FM", "Cases_per_Person_Jun", "Cases_per_Person_May", "Cases_per_Person_Apr")])
+
+
+listpanelnames <- names(panel_final)
+
+plot_correlation(panel_final[,listpanelnames[c(5:11, 15:27)]], maxcat = 24L)
+
+panel_final$Res_per_Person <- panel_final$Restaurants/panel_final$POPESTIMATE2018
+
+panel_final$Cases_per_Person <- panel_final$cases/panel_final$POPESTIMATE2018
+
+panel_final$Pop_Dense <- panel_final$POPESTIMATE2018/panel_final$CAREALAND
+
+listpanelnames <- names(panel_final)
+
+plot_correlation(panel_final[,listpanelnames[c(5:11, 14:17, 22:30)]], maxcat = 24L)
+
+panel_corr <- panel_final[,listpanelnames[c(5:11, 14:17, 22:30, 1:3)]]
+
+panel_corr <- panel_corr %>% rename(months = variable)
+
+panel_corr$pop_avpm <- panel_corr$POPESTIMATE2018*panel_corr$Avg_PMiles_Trip
+
+plot_correlation(panel_corr[1:20])
+
+plot_intro(panel_corr)
+
+```
+
+```{r COVID, echo = FALSE}
+
+panel_final <- panel_final %>% rename(month = variable)
+
+test_modr <- plm(cases ~ Restaurants + Avg_PMiles_Trip + POPESTIMATE2018 + FIPS + days_at_home, data = panel_final, model="random", effect = "time", index = c("FIPS", "month"))
+
+summary(test_modr)
+
+test_mod <- plm(cases ~ FIPS, model="within", effect = "time", index = c("FIPS", "month"), data=panel_final)
+
+summary(test_mod)
+
+panel_percapita <- county_data_[,c("FIPS", "Cases_per_Person_Jan", "Cases_per_Person_Feb", "Cases_per_Person_Mar", "Cases_per_Person_Apr", "Cases_per_Person_May", "Cases_per_Person_Jun", "RperPerson", "Years.of.Potential.Life.Lost.Rate", "Avg_PMiles_Trip", "SRVC_Pop_Dense", "POPESTIMATE2018")]
+
+panel_percapita <- panel_percapita %>% melt("FIPS", c("Cases_per_Person_Jan", "Cases_per_Person_Feb", "Cases_per_Person_Mar", "Cases_per_Person_Apr", "Cases_per_Person_May", "Cases_per_Person_Jun"))
+
+panel_percapita <- panel_percapita%>%rename(months = variable, cases = value)
+
+panel_percapitax <- panel_percapita%>%right_join(county_data_[,c("FIPS", "RperPerson", "indexPMPOPEST", "Years.of.Potential.Life.Lost.Rate", "Avg_PMiles_Trip", "SRVC_Pop_Dense", "POPESTIMATE2018")])
+
+test_capita <- plm(cases ~ RperPerson + indexPMPOPEST + Years.of.Potential.Life.Lost.Rate + Avg_PMiles_Trip + SRVC_Pop_Dense + POPESTIMATE2018 + FIPS, data = panel_percapitax, model="random", effect = "time", index = c("FIPS", "months"))
+
+summary(test_capita)
+
+```
+```{r COVID, echo = false}
+
+
+
+```
+
+```{r COVID, echo = false}
+
+bayes_test <- bayes.lm(formula = Cases_per_Person_Jun ~ Cases_per_Person_Jan + Cases_per_Person_Feb + Cases_per_Person_Mar + Cases_per_Person_Apr + Cases_per_Person_May + RperPerson + Years.of.Potential.Life.Lost.Rate + Avg_PMiles_Trip + SRVC_Pop_Dense + POPESTIMATE2018, data = county_data_)
+
+summary(bayes_test)
+
+```
+
+
+```{r COVID, echo = false}
+
+
+plot_correlation(panel_corr[1:20])
+
+cases_mod <- lm(V6.cases ~ POPESTIMATE2018 + Avg_PMiles_Trip + V5.cases + `Years of Potential Life Lost Rate` + Restaurants + days_at_home + Pop_Dense + U_P_Trips + SRVC_AREA_SQML, data=panel_corr)
+
+summary(cases_mod)
+
+coeftest(cases_mod, vcov = vcovHC(cases_mod, type="HC1"))
+
+cases_mod <- lm(V5.cases ~ POPESTIMATE2018 + Avg_PMiles_Trip + V4.cases + `Years of Potential Life Lost Rate` + Restaurants + days_at_home + Pop_Dense + U_P_Trips + SRVC_AREA_SQML, data=panel_corr)
+
+summary(cases_mod)
+
+coeftest(cases_mod, vcov = vcovHC(cases_mod, type="HC1"))
+
+cases_mod <- lm(V4.cases ~ POPESTIMATE2018 + Avg_PMiles_Trip + V3.cases + `Years of Potential Life Lost Rate` + Restaurants + days_at_home + Pop_Dense + U_P_Trips + SRVC_AREA_SQML + avpm, data=panel_corr)
+
+summary(cases_mod)
+
+coeftest(cases_mod, vcov = vcovHC(cases_mod, type="HC1"))
+
+cases_mod <- lm(V6.cases ~ POPESTIMATE2018 + Avg_PMiles_Trip + V5.cases + `Years of Potential Life Lost Rate` + Restaurants + days_at_home + Pop_Dense + U_P_Trips + SRVC_AREA_SQML + pop_avpm, data=panel_corr)
+
+summary(cases_mod)
+
+coeftest(cases_mod, vcov = vcovHC(cases_mod, type="HC1"))
+
+cases_mod <- plm(cases ~ POPESTIMATE2018 + Avg_PMiles_Trip + Years.of.Potential.Life.Lost.Rate + Restaurants + days_at_home + Pop_Dense + U_P_Trips + SRVC_AREA_SQML, data = panel_final, model="random", effect = "time", index = c("FIPS", "variable"))
+
+summary(cases_mod)
+
+coeftest(cases_mod, vcov = vcovHC(cases_mod, type="HC1"))
+
+cases_per_mod <- lm(Cases_per_Person ~ Res_per_Person  + `Years of Potential Life Lost Rate` + Avg_PMiles_Trip + pop_avpm + POPESTIMATE2018 +  FIPS +days_at_home, data = panel_corr)
+
+summary(cases_per_mod)
+
+coeftest(cases_per_mod, vcov = vcovHC(cases_mod, type="HC1"))
+
+is.balanced(panel_corr)
+
+cases_per_mod <- plm(Cases_per_Person ~ Res_per_Person  + Years.of.Potential.Life.Lost.Rate + Avg_PMiles_Trip + pop_avpm + POPESTIMATE2018 +  FIPS + days_at_home, data = panel_corr, model="random", effect = "time", index = c("FIPS", "months"))
+
+has.intercept(cases_per_mod)
+
+is.pbalanced(cases_per_mod)
+
+pdwtest(cases_per_mod)
+
+summary.plm(cases_per_mod)
+
+bdy_cases_per_mod <- bdynsys(p_panel_corr, 3, 2, x = p_panel_corr$Years.of.Potential.Life.Lost.Rate, z = p_panel_corr$avg_PMiles_Trip, v = p_panel_corr$days_at_home, data=panel_corr)
+
+summary(bdy_cases_per_mod)
+
+
+View(cases_per_mod)
+
+```
+
+```{r COVID, echo = false}
+
+#cluster analysis 
+
+library(NbClust)
+library(e1071)
+library(factoextra)
+
+normalit<-function(m){
+  (m - min(m))/(max(m)-min(m))
+}
+
+#prepare data
+
+panelf_cluster <- panel_final
+
+panelf_cluster_norm <- panelf_cluster[c(4:10, 14:30)]
+
+i <- 0
+while(i < ncol(panelf_cluster_norm)){
+  i <- i+1
+  panelf_cluster_norm[i] <- panelf_cluster_norm[i] %>% normalit()
+}
+
+panelf_cluster_norm <- cbind(panelf_cluster_norm, FIPS = panel_final$FIPS)
+
+fviz_nbclust(panelf_cluster_norm[,c("Cases_per_Person", "Pop_Dense", "days_at_home", "U_P_Trips", "SRVC_AREA_POP", "SRVC_AREA_SQML", "Avg_PMiles_Trip", "Restaurants", "POPESTIMATE2018", "CAREALAND", "Years of Potential Life Lost Rate", "cases")], kmeans, method="silhouette")
+
+fviz_nbclust(panelf_cluster_norm[,c("Cases_per_Person", "Pop_Dense", "days_at_home", "U_P_Trips", "SRVC_AREA_POP", "SRVC_AREA_SQML", "Avg_PMiles_Trip", "Restaurants", "POPESTIMATE2018", "CAREALAND", "Years of Potential Life Lost Rate", "cases")], kmeans, method="wss")
+
+
+covid_cluster_dpm_9 <- kmeans(panelf_cluster_norm[,c("Cases_per_Person", "Pop_Dense", "days_at_home", "U_P_Trips", "SRVC_AREA_POP", "SRVC_AREA_SQML", "Avg_PMiles_Trip", "Restaurants", "POPESTIMATE2018", "CAREALAND", "Years of Potential Life Lost Rate", "cases")], 9)
+covid_cluster_dpm_4 <- kmeans(panelf_cluster_norm[,c("Cases_per_Person", "Pop_Dense", "days_at_home", "U_P_Trips", "SRVC_AREA_POP", "SRVC_AREA_SQML", "Avg_PMiles_Trip", "Restaurants", "POPESTIMATE2018", "CAREALAND", "Years of Potential Life Lost Rate", "cases")], 4)
+covid_cluster_dpm_7 <- kmeans(panelf_cluster_norm[,c("Cases_per_Person", "Pop_Dense", "days_at_home", "U_P_Trips", "SRVC_AREA_POP", "SRVC_AREA_SQML", "Avg_PMiles_Trip", "Restaurants", "POPESTIMATE2018", "CAREALAND", "Years of Potential Life Lost Rate", "cases")], 7)
+
+covid_cluster_dpm_2 <- kmeans(panelf_cluster_norm[,c("Cases_per_Person", "Pop_Dense", "days_at_home", "U_P_Trips", "SRVC_AREA_POP", "SRVC_AREA_SQML", "Avg_PMiles_Trip", "Restaurants", "POPESTIMATE2018", "CAREALAND", "Years of Potential Life Lost Rate", "cases")], 2)
+
+summary(covid_cluster_dpm_9)
+summary(covid_cluster_dpm_7)
+summary(covid_cluster_dpm_4)
+summary(covid_cluster_dpm_2)
+
+covid_cluster_dpm_4
+covid_cluster_dpm_7
+covid_cluster_dpm_9
+covid_cluster_dpm_2
+
+plot(panelf_cluster_norm[,c("cases", "Avg_PMiles_Trip")], col=covid_cluster_dpm_7$cluster)
+
+plot(panelf_cluster_norm[,c("cases", "Avg_PMiles_Trip")], col=covid_cluster_dpm_4$cluster)
+
+
+plot(panelf_cluster_norm[,c("cases", "Pop_Dense")], col=covid_cluster_dpm_7$cluster)
+
+plot(panelf_cluster_norm[,c("cases", "Pop_Dense")], col=covid_cluster_dpm_4$cluster)
+
+
+plot(panelf_cluster_norm[,c("cases", "POPESTIMATE2018")], col=covid_cluster_dpm_7$cluster)
+
+plot(panelf_cluster_norm[,c("cases", "POPESTIMATE2018")], col=covid_cluster_dpm_4$cluster)
+
+
+
+plot(panelf_cluster_norm[c("cases", "Years of Potential Life Lost Rate")], col=covid_cluster_dpm_7$cluster)
+
+plot(panelf_cluster_norm[c("cases", "Years of Potential Life Lost Rate")], col=covid_cluster_dpm_4$cluster)
+
+
+plot(panelf_cluster_norm[,c("cases", "days_at_home")], col=covid_cluster_dpm_7$cluster)
+
+plot(panelf_cluster_norm[,c("cases", "days_at_home")], col=covid_cluster_dpm_4$cluster)
+
+plot(panelf_cluster_norm[,c("cases", "Restaurants")], col=covid_cluster_dpm_7$cluster)
+
+plot(panelf_cluster_norm[,c("cases", "Restaurants")], col=covid_cluster_dpm_4$cluster)
+
+plot(panelf_cluster_norm[,c("days_at_home", "Restaurants")], col=covid_cluster_dpm_4$cluster)
+
+plot(panelf_cluster_norm[,c("days_at_home", "Restaurants")], col=covid_cluster_dpm_2$cluster)
+points(panelf_cluster_norm[,c("days_at_home", "Restaurants")], col=1:2, pch=8, cex=2)
+
+plot(panelf_cluster_norm[,c("cases", "Restaurants")], col=covid_cluster_dpm_2$cluster)
+points(panelf_cluster_norm[,c("cases", "Restaurants")], col=1:2, pch=8, cex=2)
+
+plot(panelf_cluster_norm[,c("cases", "days_at_home")], col=covid_cluster_dpm_2$cluster)
+points(panelf_cluster_norm[,c("cases", "days_at_home")], col=1:2, pch=8, cex=2)
+```
