@@ -18,3 +18,29 @@ The more thorough analysis failed to deliver a reliable result. While the early 
 In the cluster analysis phase it was found that one particular cluster had a high average of passenger miles per trip. These counties were unusual in that they are not what was expected. High, but not the highest population density, good health, low per-person infection rate, long stay at home orders, and a high number of restaurants (a proxy for entertainment venues). This cluster appeared in four US states. California, Texas, Florida and New York.
 
 Based on this analysis there is no indication that public transportation is an important source of COVID-19 infection spread. Linear analysis was unable to find a statistically significant result, nor did it return a consistently large coefficient across different analyses. Random forest did find that public transportation was an important component of predicting case numbers, however public transportation use can be an indicator of other behaviors that are important to the spread of COVID-19.
+
+Feature List
+
+FIPS: County FIPS Code
+Variable: Cases in a month
+Cases: number of COVID Cases detected
+VX.cases: Number of cases in the numbered month V(month).cases
+ctystid: County and State
+County: County name
+State: State Abbreviation
+CAREALAND: County area by square miles
+YPLLR or Years of Potential Life Lost Rate: Total number of years of life lost to early death
+POPESTIMATE2018: Estimate of the county population in 2018
+Restaurants: Number of restaurants in the state
+VX.rides: Number of public transportation passenger rides 
+Avg_PMiles_Trip: Average passenger miles per trip
+SRVC_AREA_SQML: Transportation district square mileage
+SRVC_AREA_POP: Population of the transportation district
+Pass_Miles: Annual Passenger Miles
+U_P_Trips: Unlinked passenger trips per year
+Days_at_home: Total government mandated days at home
+Res_per_Person: Number of restaurants in state divided by county population
+Cases_per_Person: Number of cases per person by county
+Pop_Dense: Population density by county
+X_Cases_per_Person: Number of cases per person in June by county
+
