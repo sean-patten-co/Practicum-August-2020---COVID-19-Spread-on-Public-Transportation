@@ -24,25 +24,46 @@ Based on this analysis there is no indication that public transportation is an i
 Feature List
 
 FIPS: County FIPS Code
+
 Variable: Cases in a month
+
 Cases: number of COVID Cases detected
+
 VX.cases: Number of cases in the numbered month V(month).cases
+
 ctystid: County and State
+
 County: County name
+
 State: State Abbreviation
+
 CAREALAND: County area by square miles
+
 YPLLR or Years of Potential Life Lost Rate: Total number of years of life lost to early death
+
 POPESTIMATE2018: Estimate of the county population in 2018
+
 Restaurants: Number of restaurants in the state
+
 VX.rides: Number of public transportation passenger rides 
+
 Avg_PMiles_Trip: Average passenger miles per trip
+
 SRVC_AREA_SQML: Transportation district square mileage
+
 SRVC_AREA_POP: Population of the transportation district
+
 Pass_Miles: Annual Passenger Miles
+
 U_P_Trips: Unlinked passenger trips per year
+
 Days_at_home: Total government mandated days at home
+
 Res_per_Person: Number of restaurants in state divided by county population
+
 Cases_per_Person: Number of cases per person by county
+
 Pop_Dense: Population density by county
+
 X_Cases_per_Person: Number of cases per person in June by county
 
